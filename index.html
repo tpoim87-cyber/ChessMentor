@@ -14,14 +14,14 @@ h1 span{color:var(--tq)}
 .card{background:var(--card);border:1px solid #1d3a40;border-radius:12px;padding:10px;margin-top:10px}
 #board{direction:ltr;display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;border:2px solid var(--gd);border-radius:6px;overflow:hidden;user-select:none}
 .sq{display:flex;align-items:center;justify-content:center;font-size:min(9vw,46px);position:relative;line-height:1;cursor:pointer}
-.sq.l{background:var(--lt)}.sq.d{background:var(--dk)}
+.sq.l{background:#ebecd0}.sq.d{background:#739552}
 .sq.sel{outline:3px solid var(--gd);outline-offset:-3px}
 .sq.last{box-shadow:inset 0 0 0 100px rgba(212,175,55,.35)}
 .sq.chk{box-shadow:inset 0 0 0 100px rgba(220,38,38,.55)}
 .sq.tg::after{content:"";position:absolute;width:28%;height:28%;border-radius:50%;background:rgba(45,212,191,.8)}
 .sq.tg.cap::after{width:90%;height:90%;background:none;border:3px solid var(--tq)}
-.w{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 0 3px #000}.b{color:#111;text-shadow:0 0 1px #fff}
-.co{position:absolute;font-size:9px;color:#000;opacity:.55}.co.f{bottom:1px;right:2px}.co.r{top:1px;left:2px}
+.w{color:#fff;text-shadow:0 0 1px #222,0 0 1px #222,0 1px 2px #222}.b{color:#4a4a4a;text-shadow:0 0 1px #000,0 0 1px #000,0 1px 2px #000}
+.co{position:absolute;font-size:11px;font-weight:700;opacity:.95}.co.f{bottom:1px;right:3px}.co.r{top:1px;left:3px}.sq.l .co{color:#739552}.sq.d .co{color:#ebecd0}
 #status{text-align:center;font-weight:700;margin:8px 0 0;color:var(--tq);min-height:22px}
 .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 button{flex:1;min-width:70px;background:#17353b;color:var(--tx);border:1px solid var(--tq);border-radius:9px;padding:10px 6px;font:inherit;font-size:14px;cursor:pointer}
@@ -57,7 +57,7 @@ button.on{background:var(--gd);color:#201800;border-color:var(--gd)}
   <button id="reset">⟲ مباراة جديدة</button>
   <button id="save" class="g">💾 حفظ</button>
 </div>
-<div class="row"><button id="an" class="p">🔍 حلّل الوضعية (أفضل 3 نقلات)</button></div>
+<div class="row"><button id="an" class="p">🔍 حلّل الوضعية (أفضل نقلة)</button></div>
 
 <div class="card">
   <p class="hd">اقتراحات المدرّب</p>
@@ -96,7 +96,7 @@ function render(){
     const t=tg.find(m=>m.to==n);
     if(t)d.className+=' tg'+(p||t.flags.includes('e')?' cap':'');
     if(p)d.innerHTML='<span class="'+p.color+'">'+G[p.type]+'\uFE0E</span>';
-    if(j==7)d.innerHTML+='<i class="co r" style="font-style:normal">'+(8-r)+'</i>';
+    if(j==0)d.innerHTML+='<i class="co r" style="font-style:normal">'+(8-r)+'</i>';
     if(i==7)d.innerHTML+='<i class="co f" style="font-style:normal">'+'abcdefgh'[c]+'</i>';
     d.onclick=()=>tap(n);
     bd.appendChild(d);
