@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chess Mentor AI – مدرّب الشطرنج الذكي</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+:root{--bg:#0b1517;--card:#12242a;--tq:#2dd4bf;--gd:#d4af37;--tx:#e6f2f1;--mu:#8fa9a8;--lt:#c8d9d2;--dk:#2f6f6b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:10px;max-width:520px;margin-inline:auto}
+h1{font-size:19px;margin:6px 0 10px;color:var(--gd);text-align:center}
+h1 span{color:var(--tq)}
+.card{background:var(--card);border:1px solid #1d3a40;border-radius:12px;padding:10px;margin-top:10px}
+#board{direction:ltr;display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;border:2px solid var(--gd);border-radius:6px;overflow:hidden;user-select:none}
+.sq{display:flex;align-items:center;justify-content:center;font-size:min(9vw,46px);position:relative;line-height:1;cursor:pointer}
+.sq.l{background:var(--lt)}.sq.d{background:var(--dk)}
+.sq.sel{outline:3px solid var(--gd);outline-offset:-3px}
+.sq.last{box-shadow:inset 0 0 0 100px rgba(212,175,55,.35)}
+.sq.chk{box-shadow:inset 0 0 0 100px rgba(220,38,38,.55)}
+.sq.tg::after{content:"";position:absolute;width:28%;height:28%;border-radius:50%;background:rgba(45,212,191,.8)}
+.sq.tg.cap::after{width:90%;height:90%;background:none;border:3px solid var(--tq)}
+.w{color:#fff;text-shadow:0 0 2px #000,0 0 2px #000,0 0 3px #000}.b{color:#111;text-shadow:0 0 1px #fff}
+.co{position:absolute;font-size:9px;color:#000;opacity:.55}.co.f{bottom:1px;right:2px}.co.r{top:1px;left:2px}
+#status{text-align:center;font-weight:700;margin:8px 0 0;color:var(--tq);min-height:22px}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+button{flex:1;min-width:70px;background:#17353b;color:var(--tx);border:1px solid var(--tq);border-radius:9px;padding:10px 6px;font:inherit;font-size:14px;cursor:pointer}
+button.p{background:var(--tq);color:#06201d;font-weight:700}
+button.g{border-color:var(--gd);color:var(--gd)}
+button.on{background:var(--gd);color:#201800;border-color:var(--gd)}
+.sg{border:1px solid #1d3a40;border-radius:10px;padding:8px;margin-top:8px;background:#0e1d21}
+.sg h3{margin:0 0 4px;font-size:15px;display:flex;justify-content:space-between;color:var(--gd)}
+.sg h3 em{font-style:normal;color:var(--tq)}
+.sg p{margin:4px 0;font-size:13.5px;line-height:1.7;color:#cfe3e0}
+.sg button{margin-top:4px;padding:6px;font-size:13px}
+#moves{font-size:13.5px;line-height:1.9;color:var(--lt);direction:ltr;text-align:left;max-height:90px;overflow:auto}
+.hd{font-size:14px;color:var(--gd);margin:0 0 6px}
+.gl{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:13px}
+.gl span{flex:1}.gl button{flex:none;min-width:0;padding:5px 10px}
+.mu{color:var(--mu);font-size:12.5px;margin:6px 0 0}
+#bwrap{position:relative}#arr{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);pointer-events:none;direction:ltr}
+</style>
+</head>
+<body>
+<h1>♞ Chess Mentor <span>AI</span> — مدرّب الشطرنج الذكي</h1>
+
+<div id="bwrap"><div id="board"></div><svg id="arr" viewBox="0 0 8 8"></svg></div>
+<div id="eng" class="mu" style="text-align:center">المحرك: المدمج (عمق 3)</div>
+<div id="status"></div>
+
+<div class="row">
+  <button id="bw" class="on">أنا بالأبيض ♔</button>
+  <button id="bb">أنا بالأسود ♚</button>
+</div>
+<div class="row">
+  <button id="undo">↩ تراجع</button>
+  <button id="reset">⟲ مباراة جديدة</button>
+  <button id="save" class="g">💾 حفظ</button>
+</div>
+<div class="row"><button id="an" class="p">🔍 حلّل الوضعية (أفضل 3 نقلات)</button></div>
+
+<div class="card">
+  <p class="hd">اقتراحات المدرّب</p>
+  <div id="sugs"><p class="mu">اضغط «حلّل الوضعية» أو العب نقلتك وسيحلّل المدرّب تلقائياً عند دورك. سجّل نقلات الخصم بتحريكها على الرقعة.</p></div>
+</div>
+
+<div class="card">
+  <p class="hd">سجل النقلات</p>
+  <div id="moves">—</div>
+</div>
+
+<div class="card">
+  <p class="hd">المباريات المحفوظة</p>
+  <div id="games"><p class="mu">لا توجد مباريات محفوظة.</p></div>
+</div>
+<p class="mu" style="text-align:center">للتدريب وتحليل المباريات بعد انتهائها فقط. كل شيء يعمل محلياً على جهازك.</p>
+
+<script>
+const g=new Chess();
+let side='w',sel=null,tg=[],busy=false,tk=0,arrowM=null,sfW=null,sfOK=false;
+const G={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚'};
+const N={p:'بيدق',n:'حصان',b:'فيل',r:'قلعة',q:'وزير',k:'ملك'};
+const V={p:100,n:320,b:330,r:500,q:900,k:0};
+const $=id=>document.getElementById(id);
+
+function sqName(r,c){return 'abcdefgh'[c]+(8-r)}
+function render(){
+  const bd=$('board');bd.innerHTML='';
+  const B=g.board(),hist=g.history({verbose:true}),lm=hist[hist.length-1];
+  let kSq=null;
+  if(g.in_check()){for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=B[r][c];if(p&&p.type=='k'&&p.color==g.turn())kSq=sqName(r,c)}}
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    const r=side=='w'?i:7-i,c=side=='w'?j:7-j,n=sqName(r,c),p=B[r][c];
+    const d=document.createElement('div');
+    d.className='sq '+((r+c)%2?'d':'l')+(sel==n?' sel':'')+(lm&&(lm.from==n||lm.to==n)?' last':'')+(kSq==n?' chk':'');
+    const t=tg.find(m=>m.to==n);
+    if(t)d.className+=' tg'+(p||t.flags.includes('e')?' cap':'');
+    if(p)d.innerHTML='<span class="'+p.color+'">'+G[p.type]+'\uFE0E</span>';
+    if(j==7)d.innerHTML+='<i class="co r" style="font-style:normal">'+(8-r)+'</i>';
+    if(i==7)d.innerHTML+='<i class="co f" style="font-style:normal">'+'abcdefgh'[c]+'</i>';
+    d.onclick=()=>tap(n);
+    bd.appendChild(d);
+  }
+  status();moves();drawArrow();
+}
+function status(){
+  let s;
+  if(g.in_checkmate())s='كش مات! فاز '+(g.turn()=='w'?'الأسود':'الأبيض');
+  else if(g.in_stalemate())s='تعادل بالتبييت (Stalemate)';
+  else if(g.in_draw())s='تعادل';
+  else s='الدور على '+(g.turn()=='w'?'الأبيض':'الأسود')+(g.in_check()?' — كش!':'');
+  $('status').textContent=s;
+}
+function moves(){
+  const h=g.history();let o='';
+  h.forEach((m,i)=>{o+=(i%2?'':((i/2|0)+1)+'. ')+m+' '});
+  $('moves').textContent=o||'—';
+  const el=$('moves');el.scrollTop=el.scrollHeight;
+}
+function tap(n){
+  if(g.game_over())return;
+  const m=tg.find(x=>x.to==n);
+  if(sel&&m){play(m);return}
+  const p=g.get(n);
+  if(p&&p.color==g.turn()){sel=n;tg=g.moves({square:n,verbose:true})}
+  else{sel=null;tg=[]}
+  render();
+}
+function play(m){
+  g.move({from:m.from,to:m.to,promotion:'q'});arrowM=null;
+  sel=null;tg=[];tk++;
+  $('sugs').innerHTML='<p class="mu">…</p>';
+  render();
+  if(!g.game_over()&&g.turn()==side)setTimeout(analyze,50);
+  else if(g.game_over())$('sugs').innerHTML='<p class="mu">انتهت المباراة.</p>';
+  else $('sugs').innerHTML='<p class="mu">دور الخصم. سجّل نقلته على الرقعة لأحلّل لك.</p>';
+}
+
+/* ===== المحرك ===== */
+function ev(){
+  let s=0;const B=g.board();
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=B[r][c];if(!p)continue;
+    let v=V[p.type];
+    const dc=Math.abs(3.5-c)+Math.abs(3.5-r);
+    if(p.type=='n'||p.type=='b')v+=(7-dc)*4;
+    else if(p.type=='p'){v+=(7-dc)*2+(p.color=='w'?7-r:r)*5}
+    else if(p.type=='k'){v+=(r==(p.color=='w'?7:0)?12:-6)}
+    s+=p.color=='w'?v:-v;
+  }
+  return s;
+}
+function ord(ms){
+  return ms.sort((a,b)=>((b.captured?V[b.captured]*10-V[b.piece]:0)+(b.promotion?800:0))-((a.captured?V[a.captured]*10-V[a.piece]:0)+(a.promotion?800:0)));
+}
+function nm(d,a,b){
+  if(g.in_checkmate())return -99000-d;
+  if(g.in_draw())return 0;
+  if(d==0)return (g.turn()=='w'?1:-1)*ev();
+  let best=-1e9;
+  for(const m of ord(g.moves({verbose:true}))){
+    g.move(m);const s=-nm(d-1,-b,-a);g.undo();
+    if(s>best)best=s;if(s>a)a=s;if(a>=b)break;
+  }
+  return best;
+}
+function analyzeBuiltin(){
+  if(busy||g.game_over())return;
+  busy=true;const my=tk;
+  $('sugs').innerHTML='<p class="mu">⏳ المحرك يحلّل الوضعية…</p>';
+  setTimeout(()=>{
+    const res=[];
+    for(const m of ord(g.moves({verbose:true}))){
+      g.move(m);const s=-nm(2,-1e9,1e9);const mate=g.in_checkmate(),chk=g.in_check();g.undo();
+      res.push({m,s,mate,chk});
+    }
+    res.sort((a,b)=>b.s-a.s);
+    busy=false;
+    if(my!=tk){return}
+    show(res.slice(0,1));
+  },30);
+}
+function fmt(s){
+  if(Math.abs(s)>=90000)return s>0?'كش مات':'خسارة';
+  const x=(s/100).toFixed(1);return (s>0?'+':'')+x;
+}
+function why(r,i,all){
+  const m=r.m,P=[];
+  const me=m.color,pn=N[m.piece];
+  if(r.mate)return 'كش مات! هذه النقلة تُنهي المباراة بفوزك فوراً.';
+  if(m.flags.includes('k')||m.flags.includes('q'))P.push('تبييت: تؤمّن الملك وتُنزل القلعة إلى اللعب.');
+  if(m.captured)P.push('تأكل '+N[m.captured]+' بواسطة '+pn+(V[m.captured]>V[m.piece]?' — مكسب مادي واضح.':'.'));
+  if(m.promotion)P.push('ترقية البيدق إلى وزير، وهي أقوى قطعة.');
+  if(r.chk)P.push('تعطي كش وتجبر الخصم على الرد.');
+  if((m.piece=='n'||m.piece=='b')&&m.from[1]==(me=='w'?'1':'8')&&g.history().length<24)P.push('تطوّر قطعة من الصف الأول وتقرّبها من اللعب.');
+  if(['d4','e4','d5','e5'].includes(m.to)&&!m.captured)P.push('تسيطر على مربع في المركز، وهذا مفتاح الافتتاح.');
+  g.move(m);
+  const bad=g.moves({verbose:true}).find(o=>o.to==m.to&&o.captured&&V[o.piece]<V[m.piece]);
+  g.undo();
+  if(bad)P.push('انتبه: قد يردّ الخصم بأكل قطعتك بـ'+N[bad.piece]+'، لكن التقييم يرى أن النقلة تبقى الأفضل ضمن الخيارات.');
+  if(!P.length)P.push('تحسّن موقع القطع وتحافظ على توازن الوضعية دون مخاطرة.');
+  if(i==0&&all[1]&&r.s-all[1].s>=50)P.push('البدائل أضعف بحوالي '+((r.s-all[1].s)/100).toFixed(1)+' بيدق، فلا تتسرّع بغيرها.');
+  if(i>0&&all[0].s-r.s>=30)P.push('أضعف من الأولى بحوالي '+((all[0].s-r.s)/100).toFixed(1)+' بيدق.');
+  return P.join(' ');
+}
+function show(top){
+  const box=$('sugs');box.innerHTML='';arrowM=top[0].m;drawArrow();
+  const sgn=g.turn()=='w'?1:-1;
+  top.forEach((r,i)=>{
+    const d=document.createElement('div');d.className='sg';
+    d.innerHTML='<h3><span>⭐ أفضل نقلة: '+r.m.san+'</span><em>'+fmt(r.s)+'</em></h3><p>'+why(r,i,top)+'</p>';
+    const b=document.createElement('button');b.textContent='✔ نفّذتُ هذه النقلة';
+    b.onclick=()=>play(r.m);d.appendChild(b);box.appendChild(d);
+  });
+  const n=document.createElement('p');n.className='mu';
+  n.textContent='التقييم بالبيادق للطرف الذي عليه الدور — المحرك: '+(sfOK?'Stockfish':'المحرك المدمج (عمق 3)');
+  box.appendChild(n);
+}
+
+/* ===== السهم و Stockfish ===== */
+function drawArrow(){
+  const s=$('arr');if(!s)return;
+  if(!arrowM){s.innerHTML='';return}
+  const P=q=>{const c='abcdefgh'.indexOf(q[0]),r=8-(+q[1]);return [(side=='w'?c:7-c)+.5,(side=='w'?r:7-r)+.5]};
+  const a=P(arrowM.from),b=P(arrowM.to);
+  const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L;
+  const x1=a[0]+ux*.3,y1=a[1]+uy*.3,x2=b[0]-ux*.6,y2=b[1]-uy*.6;
+  s.innerHTML='<defs><marker id="ah" markerWidth="3" markerHeight="3" refX="0" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 z" fill="#22c55e"/></marker></defs><line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#22c55e" stroke-opacity=".85" stroke-width=".2" stroke-linecap="round" marker-end="url(#ah)"/>';
+}
+function initSF(){
+  try{
+    const w=new Worker('stockfish-19-lite-single.js');
+    w.onerror=()=>{sfOK=false;sfW=null};
+    w.onmessage=e=>{if(String(e.data).indexOf('uciok')>-1){sfOK=true;sfW=w;$('eng').textContent='⚡ المحرك: Stockfish'}};
+    w.postMessage('uci');
+  }catch(e){}
+}
+function analyzeSF(){
+  if(busy||g.game_over())return;
+  busy=true;const my=tk;
+  $('sugs').innerHTML='<p class="mu">⏳ Stockfish يحلّل الوضعية…</p>';
+  let sc=0,done=false;
+  const t=setTimeout(()=>{if(!done){done=true;sfOK=false;busy=false;$('eng').textContent='المحرك: المدمج (عمق 3)';analyzeBuiltin()}},9000);
+  sfW.onmessage=e=>{
+    const l=String(e.data);
+    const m=l.match(/score (cp|mate) (-?\d+)/);
+    if(m&&l.indexOf('info')==0&&!/lowerbound|upperbound/.test(l))sc=m[1]=='cp'?+m[2]:(+m[2]>0?99000:-99000);
+    if(l.indexOf('bestmove')==0&&!done){
+      done=true;clearTimeout(t);busy=false;if(my!=tk)return;
+      const u=l.split(' ')[1],ms=g.moves({verbose:true});
+      const mv=ms.find(x=>x.from+x.to+(x.promotion||'')==u)||ms.find(x=>x.from+x.to==u.slice(0,4));
+      if(!mv)return;
+      g.move(mv);const mate=g.in_checkmate(),chk=g.in_check();g.undo();
+      show([{m:mv,s:sc,mate:mate,chk:chk}]);
+    }
+  };
+  sfW.postMessage('position fen '+g.fen());sfW.postMessage('go movetime 1500');
+}
+function analyze(){if(sfOK&&sfW)analyzeSF();else analyzeBuiltin()}
+initSF();
+
+/* ===== التحكم ===== */
+function setSide(s){
+  side=s;$('bw').className=s=='w'?'on':'';$('bb').className=s=='b'?'on':'';
+  sel=null;tg=[];render();
+}
+$('bw').onclick=()=>setSide('w');$('bb').onclick=()=>setSide('b');
+$('undo').onclick=()=>{arrowM=null;g.undo();sel=null;tg=[];tk++;$('sugs').innerHTML='<p class="mu">تم التراجع عن النقلة.</p>';render()};
+$('reset').onclick=()=>{if(g.history().length&&!confirm('بدء مباراة جديدة؟'))return;arrowM=null;g.reset();sel=null;tg=[];tk++;$('sugs').innerHTML='<p class="mu">مباراة جديدة. اضغط «حلّل الوضعية» متى شئت.</p>';render();if(side=='w'){}};
+$('an').onclick=analyze;
+
+function loadGames(){try{return JSON.parse(localStorage.getItem('cm_games')||'[]')}catch(e){return []}}
+function storeGames(a){try{localStorage.setItem('cm_games',JSON.stringify(a))}catch(e){alert('تعذّر الحفظ على هذا المتصفح')}}
+function renderGames(){
+  const a=loadGames(),box=$('games');
+  if(!a.length){box.innerHTML='<p class="mu">لا توجد مباريات محفوظة.</p>';return}
+  box.innerHTML='';
+  a.forEach((x,i)=>{
+    const d=document.createElement('div');d.className='gl';
+    d.innerHTML='<span>'+x.name+' ('+x.n+' نقلة)</span>';
+    const l=document.createElement('button');l.textContent='فتح';
+    l.onclick=()=>{arrowM=null;g.reset();g.load_pgn(x.pgn);side=x.side;tk++;sel=null;tg=[];setSide(side);$('sugs').innerHTML='<p class="mu">تم فتح المباراة.</p>'};
+    const r=document.createElement('button');r.textContent='🗑';
+    r.onclick=()=>{const b=loadGames();b.splice(i,1);storeGames(b);renderGames()};
+    d.appendChild(l);d.appendChild(r);box.appendChild(d);
+  });
+}
+$('save').onclick=()=>{
+  if(!g.history().length){alert('لا توجد نقلات لحفظها');return}
+  const a=loadGames();
+  const dt=new Date().toLocaleString('ar',{dateStyle:'short',timeStyle:'short'});
+  a.unshift({name:dt,pgn:g.pgn(),side,n:g.history().length});
+  storeGames(a.slice(0,20));renderGames();
+};
+render();renderGames();
+</script>
+</body>
+</html>
