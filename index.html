@@ -31,6 +31,7 @@ button.on{background:var(--gd);color:#201800;border-color:var(--gd)}
 .sg{border:1px solid #1d3a40;border-radius:10px;padding:8px;margin-top:8px;background:#0e1d21}
 .sg h3{margin:0 0 4px;font-size:15px;display:flex;justify-content:space-between;color:var(--gd)}
 .sg h3 em{font-style:normal;color:var(--tq)}
+.sg{cursor:pointer}.sg.cur{border-color:var(--gd);background:#12302f}
 .sg p{margin:4px 0;font-size:13.5px;line-height:1.7;color:#cfe3e0}
 .sg button{margin-top:4px;padding:6px;font-size:13px}
 #moves{font-size:13.5px;line-height:1.9;color:var(--lt);direction:ltr;text-align:left;max-height:90px;overflow:auto}
@@ -58,23 +59,16 @@ select{flex:1;min-width:90px;background:#17353b;color:var(--tx);border:1px solid
   <button id="reset">⟲ مباراة جديدة</button>
   <button id="save" class="g">💾 حفظ</button>
 </div>
-<div class="row"><button id="cpub">🤖 العب ضد الكمبيوتر</button><select id="lv"><option value="1">مبتدئ</option><option value="2">متوسط</option><option value="3" selected>جيد</option><option value="4">قوي</option><option value="5">أقصى قوة</option></select></div>
-<div class="row"><button id="an" class="p">🔍 حلّل الوضعية (أفضل نقلة)</button></div>
+<div class="row"><button id="an" class="p">🔍 حلّل الوضعية (3 خيارات)</button></div>
 
 <div class="card">
   <p class="hd">اقتراحات المدرّب</p>
-  <div id="sugs"><p class="mu">اضغط «حلّل الوضعية» أو العب نقلتك وسيحلّل المدرّب تلقائياً عند دورك. سجّل نقلات الخصم بتحريكها على الرقعة.</p></div>
+  <div id="sugs"><p class="mu">العب نقلتك وسيحلّل المدرّب تلقائياً عند دورك. سجّل نقلات الخصم بتحريكها على الرقعة، ثم اضغط على أي اقتراح ليظهر سهمه الأخضر.</p></div>
 </div>
 
 <div class="card">
   <p class="hd">سجل النقلات</p>
   <div id="moves">—</div>
-</div>
-
-<div class="card">
-  <p class="hd">🔍 تشخيص الخصم الافتراضي</p>
-  <div id="dbg" class="mu">العب ضد الكمبيوتر وستظهر هنا نتائج الآليات الثلاث.</div>
-  <div class="row"><button id="dbgt" class="g">🧪 اختبار الانتقاء (10000)</button><button id="dbgr">مسح</button></div>
 </div>
 
 <div class="card">
@@ -85,7 +79,7 @@ select{flex:1;min-width:90px;background:#17353b;color:var(--tx);border:1px solid
 
 <script>
 const g=new Chess();
-let side='w',sel=null,tg=[],busy=false,tk=0,arrowM=null,sfW=null,sfOK=false,cpu=false,lvl=3;
+let side='w',sel=null,tg=[],busy=false,tk=0,arrowM=null,sfW=null,sfOK=false;
 const G={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚'};
 const N={p:'بيدق',n:'حصان',b:'فيل',r:'قلعة',q:'وزير',k:'ملك'};
 const V={p:100,n:320,b:330,r:500,q:900,k:0};
@@ -139,9 +133,9 @@ function play(m){
   sel=null;tg=[];tk++;
   $('sugs').innerHTML='<p class="mu">…</p>';
   render();
-  if(cpu&&!g.game_over()&&g.turn()!=side){setTimeout(cpuTurn,300);$('sugs').innerHTML='';}else if(!cpu&&!g.game_over()&&g.turn()==side)setTimeout(analyze,50);
-  else if(g.game_over())$('sugs').innerHTML='<p class="mu">انتهت المباراة.</p>';
-  else $('sugs').innerHTML='<p class="mu">'+(cpu?'دورك. اضغط «حلّل الوضعية» إن أردت مساعدة المدرّب.':'دور الخصم. سجّل نقلته على الرقعة لأحلّل لك.')+'</p>';
+  if(g.game_over())$('sugs').innerHTML='<p class="mu">انتهت المباراة.</p>';
+  else if(g.turn()==side)setTimeout(analyze,50);
+  else $('sugs').innerHTML='<p class="mu">دور الخصم. سجّل نقلته على الرقعة لأحلّل لك.</p>';
 }
 
 /* ===== المحرك ===== */
@@ -185,7 +179,7 @@ function analyzeBuiltin(){
     res.sort((a,b)=>b.s-a.s);
     busy=false;
     if(my!=tk){return}
-    show(res.slice(0,1));
+    show(res.slice(0,3));
   },30);
 }
 function fmt(s){
@@ -211,14 +205,23 @@ function why(r,i,all){
   if(i>0&&all[0].s-r.s>=30)P.push('أضعف من الأولى بحوالي '+((all[0].s-r.s)/100).toFixed(1)+' بيدق.');
   return P.join(' ');
 }
+const LAB=['⭐ أفضل','🟡 متوسط','🟠 مبتدئ'];
 function show(top){
-  const box=$('sugs');box.innerHTML='';arrowM=top[0].m;drawArrow();
-  const sgn=g.turn()=='w'?1:-1;
+  const box=$('sugs');box.innerHTML='';arrowM=null;drawArrow();
+  const h=document.createElement('p');h.className='mu';h.textContent='اضغط على أي اقتراح ليظهر سهمه الأخضر على الرقعة، واضغط عليه مرة أخرى لإخفائه.';box.appendChild(h);
+  const cards=[];
   top.forEach((r,i)=>{
     const d=document.createElement('div');d.className='sg';
-    d.innerHTML='<h3><span>⭐ أفضل نقلة: '+r.m.san+'</span><em>'+fmt(r.s)+'</em></h3><p>'+why(r,i,top)+'</p>';
+    d.innerHTML='<h3><span>'+LAB[i]+': '+r.m.san+'</span><em>'+fmt(r.s)+'</em></h3><p>'+why(r,i,top)+'</p>';
+    d.onclick=()=>{
+      const on=arrowM===r.m;
+      cards.forEach(c=>c.className='sg');
+      if(on){arrowM=null}else{arrowM=r.m;d.className='sg cur'}
+      drawArrow();
+    };
     const b=document.createElement('button');b.textContent='✔ نفّذتُ هذه النقلة';
-    b.onclick=()=>play(r.m);d.appendChild(b);box.appendChild(d);
+    b.onclick=e=>{e.stopPropagation();play(r.m)};
+    d.appendChild(b);box.appendChild(d);cards.push(d);
   });
   const n=document.createElement('p');n.className='mu';
   n.textContent='التقييم بالبيادق للطرف الذي عليه الدور — المحرك: '+(sfOK?'Stockfish':'المحرك المدمج (عمق 3)');
@@ -247,172 +250,48 @@ function analyzeSF(){
   if(busy||g.game_over())return;
   busy=true;const my=tk;
   $('sugs').innerHTML='<p class="mu">⏳ Stockfish يحلّل الوضعية…</p>';
-  let sc=0,done=false;
+  const lines={};let done=false;
   const t=setTimeout(()=>{if(!done){done=true;sfOK=false;busy=false;$('eng').textContent='المحرك: المدمج (عمق 3)';analyzeBuiltin()}},9000);
   sfW.onmessage=e=>{
     const l=String(e.data);
-    const m=l.match(/score (cp|mate) (-?\d+)/);
-    if(m&&l.indexOf('info')==0&&!/lowerbound|upperbound/.test(l))sc=m[1]=='cp'?+m[2]:(+m[2]>0?99000:-99000);
+    if(l.indexOf('info')==0){parseInfo(l,lines);return}
     if(l.indexOf('bestmove')==0&&!done){
       done=true;clearTimeout(t);busy=false;if(my!=tk)return;
-      const u=l.split(' ')[1],ms=g.moves({verbose:true});
-      const mv=ms.find(x=>x.from+x.to+(x.promotion||'')==u)||ms.find(x=>x.from+x.to==u.slice(0,4));
-      if(!mv)return;
-      g.move(mv);const mate=g.in_checkmate(),chk=g.in_check();g.undo();
-      show([{m:mv,s:sc,mate:mate,chk:chk}]);
+      const res=[];
+      for(const c of sortedLines(lines)){
+        const mv=findMove(c.u);if(!mv)continue;
+        g.move(mv);const mate=g.in_checkmate(),chk=g.in_check();g.undo();
+        res.push({m:mv,s:c.s,mate:mate,chk:chk});
+      }
+      if(!res.length)return;
+      show(res.slice(0,3));
     }
   };
-  sfW.postMessage('setoption name MultiPV value 1');sfW.postMessage('setoption name Skill Level value 20');sfW.postMessage('position fen '+g.fen());sfW.postMessage('go movetime 1500');
+  sfW.postMessage('setoption name Skill Level value 20');sfW.postMessage('setoption name MultiPV value 3');sfW.postMessage('position fen '+g.fen());sfW.postMessage('go movetime 1500');
 }
 function analyze(){if(sfOK&&sfW)analyzeSF();else analyzeBuiltin()}
 
-/* ===== العب ضد الكمبيوتر: خصم افتراضي متدرج المستوى (يحاكي لاعباً بشرياً) ===== */
-/* 1) Search Depth Capping: عمق البحث محصور بين 6 و 10 */
-const LV={1:{depth:6},2:{depth:7},3:{depth:8},4:{depth:9},5:{depth:10}};
-const DEPTH_MIN=6,DEPTH_MAX=10;
-/* 2) Sub-optimal Moves: احتمال اختيار النقلة الثانية/الثالثة + أوزان أولية للترتيب */
-const HM={subProb:0.30,rankPrior:[0.6,0.4],lossScale:150,lossCap:600,multiPV:3};
-/* 3) Timing Jitter: حدود زمن التفكير بالمللي ثانية */
-const TJ={min:350,max:3500,single:[150,400],hesitateProb:0.08};
-let cpuSeq=0;
-const DBG={n:0,sub:0,sum:0,rows:[]};
-function dbgShow(){
-  const el=$('dbg');if(!el)return;
-  if(!DBG.n){el.textContent='العب ضد الكمبيوتر وستظهر هنا نتائج الآليات الثلاث.';return}
-  const pct=(DBG.sub/DBG.n*100).toFixed(0),avg=(DBG.sum/DBG.n/1000).toFixed(2);
-  el.innerHTML='<p style="margin:2px 0;color:#e6f2f1">نقلات الكمبيوتر: <b>'+DBG.n+'</b> — غير مثالية (المركز 2/3): <b>'+DBG.sub+'</b> ('+pct+'%) — متوسط الزمن: <b>'+avg+' ث</b></p>'+
-    DBG.rows.map(r=>'<div style="border-top:1px solid #1d3a40;padding:3px 0">#'+r.n+' · عمق مطلوب <b>'+r.D+'</b> / وصل <b>'+r.dmax+'</b> · اختار المركز <b>'+r.rank+'</b> من '+r.of+' · نقلات قانونية '+r.legal+' · تأخير '+(r.delay/1000).toFixed(1)+'ث / فعلي '+(r.actual/1000).toFixed(1)+'ث</div>').join('');
+/* ===== قراءة نتائج Stockfish ===== */
+function parseInfo(l,lines){
+  if(/lowerbound|upperbound/.test(l))return;
+  const mp=l.match(/ multipv (\d+)/),sc=l.match(/ score (cp|mate) (-?\d+)/),pv=l.match(/ pv (\S+)/);
+  if(sc&&pv)lines[mp?+mp[1]:1]={u:pv[1],s:sc[1]=='cp'?+sc[2]:(+sc[2]>0?99000:-99000)};
 }
-function dbgLog(i){
-  DBG.n++;if(i.rank>1)DBG.sub++;DBG.sum+=i.actual;
-  DBG.rows.unshift(Object.assign({n:DBG.n},i));DBG.rows=DBG.rows.slice(0,8);
-  dbgShow();
-}
-function dbgSelfTest(){
-  const c=[0,0,0],N=10000;
-  for(let i=0;i<N;i++){const x=pickHumanMove([{u:0,s:50},{u:1,s:30},{u:2,s:0}]);c[x.u]++}
-  const d=[];for(let i=0;i<20;i++)d.push(Math.round(thinkDelay()));
-  $('dbg').innerHTML='<p style="margin:2px 0;color:#e6f2f1">اختبار الانتقاء: الأفضل <b>'+(c[0]/N*100).toFixed(1)+'%</b> — الثانية <b>'+(c[1]/N*100).toFixed(1)+'%</b> — الثالثة <b>'+(c[2]/N*100).toFixed(1)+'%</b> (المتوقع تقريباً 70 / 19 / 11)</p>'+
-    '<p style="margin:2px 0">عينة تأخير (مللي ثانية) في الوضعية الحالية: '+d.join('، ')+'</p>'+
-    '<p style="margin:2px 0">الأصغر <b>'+Math.min(...d)+'</b> — الأكبر <b>'+Math.max(...d)+'</b></p>';
-}
-
-function depthFor(l){
-  const d=(LV[l]||LV[3]).depth;
-  return Math.max(DEPTH_MIN,Math.min(DEPTH_MAX,d));
-}
-function weightedPick(items,weights){
-  let t=0;for(const w of weights)t+=w;
-  let r=Math.random()*t;
-  for(let i=0;i<items.length;i++){r-=weights[i];if(r<=0)return items[i]}
-  return items[items.length-1];
-}
-/* cands: مرتبة تنازلياً (الأفضل أولاً)، لكل عنصر الحقل s (التقييم بالسنتي-بيدق) */
-function pickHumanMove(cands){
-  const best=cands[0];
-  if(cands.length<2||Math.random()>=HM.subProb)return best;
-  const alts=cands.slice(1,3).filter(c=>c.s>-90000||best.s<=-90000);
-  if(!alts.length)return best;
-  const w=alts.map((c,i)=>{
-    const loss=Math.min(HM.lossCap,Math.max(0,best.s-c.s));
-    return HM.rankPrior[i]*Math.max(.05,Math.exp(-loss/HM.lossScale));
-  });
-  return weightedPick(alts,w);
-}
-function posComplexity(){
-  const ms=g.moves({verbose:true}),n=ms.length;
-  if(n<=1)return 0;
-  let caps=0,chks=0,pcs=0;
-  for(const m of ms){if(m.captured)caps++;if(/[+#]/.test(m.san))chks++}
-  for(const row of g.board())for(const p of row)if(p)pcs++;
-  const c=Math.min(n,45)/45*.45+Math.min(caps,8)/8*.2+Math.min(chks,4)/4*.15+(pcs/32)*.1+(g.in_check()?.1:0);
-  return Math.max(0,Math.min(1,c));
-}
-function thinkDelay(){
-  const c=posComplexity();
-  if(c===0)return TJ.single[0]+Math.random()*(TJ.single[1]-TJ.single[0]);
-  const base=TJ.min+c*(TJ.max-TJ.min)*.6;
-  let d=base*(.6+Math.random()*.9);
-  if(Math.random()<TJ.hesitateProb)d+=800+Math.random()*1200;
-  return Math.max(TJ.min,Math.min(TJ.max,d));
-}
+function sortedLines(lines){return Object.keys(lines).map(Number).sort((x,y)=>x-y).map(k=>lines[k])}
 function findMove(u){
   const ms=g.moves({verbose:true});
   return ms.find(x=>x.from+x.to+(x.promotion||'')==u)||ms.find(x=>x.from+x.to==u.slice(0,4));
 }
-function cpuTurn(){
-  if(!cpu||busy||g.game_over()||g.turn()==side)return;
-  busy=true;const my=tk,job=++cpuSeq,t0=Date.now(),delay=thinkDelay(),D=depthFor(lvl),legal=g.moves().length;
-  $('sugs').innerHTML='<p class="mu">🤖 الكمبيوتر يفكّر…</p>';
-  const deliver=(mv,info)=>{
-    const wait=Math.max(0,delay-(Date.now()-t0));
-    setTimeout(()=>{
-      if(job!==cpuSeq)return;
-      busy=false;
-      if(my!==tk){setTimeout(cpuTurn,50);return}
-      if(mv){if(info){info.actual=Date.now()-t0;dbgLog(info)}play(mv)}
-    },wait);
-  };
-  const builtin=()=>{
-    setTimeout(()=>{
-      if(job!==cpuSeq)return;
-      const res=[];
-      for(const m of g.moves({verbose:true})){g.move(m);res.push({m,s:-nm(1,-1e9,1e9)});g.undo()}
-      if(!res.length){deliver(null);return}
-      res.sort((x,y)=>y.s-x.s);
-      const pk=pickHumanMove(res);
-      deliver(pk.m,{D:'مدمج',dmax:'—',rank:res.indexOf(pk)+1,of:res.length,legal:legal,delay:delay});
-    },60);
-  };
-  if(sfOK&&sfW){
-    const lines={};let fin=false,dmax=0;
-    const wd=setTimeout(()=>{
-      if(fin)return;fin=true;sfOK=false;
-      $('eng').textContent='المحرك: المدمج (عمق 3)';builtin();
-    },8000);
-    sfW.onmessage=e=>{
-      const l=String(e.data);
-      if(l.indexOf('info')==0){
-        const dm=l.match(/ depth (\d+)/);if(dm)dmax=Math.max(dmax,+dm[1]);
-        if(/lowerbound|upperbound/.test(l))return;
-        const mp=l.match(/ multipv (\d+)/),sc=l.match(/ score (cp|mate) (-?\d+)/),pv=l.match(/ pv (\S+)/);
-        if(sc&&pv)lines[mp?+mp[1]:1]={u:pv[1],s:sc[1]=='cp'?+sc[2]:(+sc[2]>0?99000:-99000)};
-        return;
-      }
-      if(l.indexOf('bestmove')!=0||fin)return;
-      fin=true;clearTimeout(wd);
-      const bm=l.split(' ')[1];
-      const cands=Object.keys(lines).map(Number).sort((x,y)=>x-y).map(k=>lines[k]);
-      if(!cands.length)cands.push({u:bm,s:0});
-      const pk=pickHumanMove(cands);
-      deliver(findMove(pk.u)||findMove(bm),{D:D,dmax:dmax,rank:cands.indexOf(pk)+1,of:cands.length,legal:legal,delay:delay});
-    };
-    sfW.postMessage('setoption name Skill Level value 20');
-    sfW.postMessage('setoption name MultiPV value '+HM.multiPV);
-    sfW.postMessage('position fen '+g.fen());
-    sfW.postMessage('go depth '+D);
-  }else{
-    builtin();
-  }
-}
-$('cpub').onclick=()=>{
-  cpu=!cpu;$('cpub').className=cpu?'on':'';
-  $('cpub').textContent=cpu?'🤖 ضد الكمبيوتر: يعمل':'🤖 العب ضد الكمبيوتر';
-  tk++;busy=false;arrowM=null;drawArrow();
-  if(cpu)setTimeout(cpuTurn,200);else $('sugs').innerHTML='<p class="mu">تم إيقاف اللعب ضد الكمبيوتر.</p>';
-};
-$('dbgt').onclick=dbgSelfTest;$('dbgr').onclick=()=>{DBG.n=0;DBG.sub=0;DBG.sum=0;DBG.rows=[];dbgShow()};
-$('lv').onchange=()=>{lvl=+$('lv').value};
 initSF();
 
 /* ===== التحكم ===== */
 function setSide(s){
   side=s;$('bw').className=s=='w'?'on':'';$('bb').className=s=='b'?'on':'';
-  sel=null;tg=[];render();if(cpu){tk++;busy=false;setTimeout(cpuTurn,200)}
+  sel=null;tg=[];render();
 }
 $('bw').onclick=()=>setSide('w');$('bb').onclick=()=>setSide('b');
-$('undo').onclick=()=>{arrowM=null;g.undo();if(cpu&&g.turn()!=side)g.undo();sel=null;tg=[];tk++;$('sugs').innerHTML='<p class="mu">تم التراجع عن النقلة.</p>';render()};
-$('reset').onclick=()=>{if(g.history().length&&!confirm('بدء مباراة جديدة؟'))return;arrowM=null;g.reset();sel=null;tg=[];tk++;$('sugs').innerHTML='<p class="mu">مباراة جديدة. اضغط «حلّل الوضعية» متى شئت.</p>';render();if(cpu)setTimeout(cpuTurn,200)};
+$('undo').onclick=()=>{arrowM=null;g.undo();sel=null;tg=[];tk++;$('sugs').innerHTML='<p class="mu">تم التراجع عن النقلة.</p>';render()};
+$('reset').onclick=()=>{if(g.history().length&&!confirm('بدء مباراة جديدة؟'))return;arrowM=null;g.reset();sel=null;tg=[];tk++;$('sugs').innerHTML='<p class="mu">مباراة جديدة. اضغط «حلّل الوضعية» متى شئت.</p>';render()};
 $('an').onclick=analyze;
 
 function loadGames(){try{return JSON.parse(localStorage.getItem('cm_games')||'[]')}catch(e){return []}}
